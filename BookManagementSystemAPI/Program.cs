@@ -55,6 +55,8 @@ namespace BookManagementSystemAPI
                 });
             });
 
+            //frontend will be blocked out by our API
+
             builder.Logging.AddDebug();
             builder.Logging.AddConsole();
 
