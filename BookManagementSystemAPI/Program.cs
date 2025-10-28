@@ -58,6 +58,8 @@ namespace BookManagementSystemAPI
             builder.Logging.AddDebug();
             builder.Logging.AddConsole();
 
+            builder.Services.AddApplicationInsightsTelemetry(builder.Configuration["ApplicationInsights:ConnectionString"]);
+
             builder.Services.AddDbContext<BookDbContext>(
                     options => options.UseSqlServer(builder.Configuration.GetConnectionString("BookDb"))
             );
