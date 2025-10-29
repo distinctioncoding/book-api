@@ -13,14 +13,21 @@ namespace BookManagementSystemAPI.Services
         private readonly IBookRepository _bookRepository;
         private readonly IMapper _mapper;
         private readonly MongoDbContext _mongoDbContext;
+
+        private readonly ICacheService _cacheService;
+
+        private readonly ILogger<BookService> _logger;
         //对象在注入时， 到底是什么机制或者东西把它实例化了？？？
         //IOC container , 依赖注入容器
         //依赖注入的容器 会自动创建注入的类型的实例， 前提是我们已经告诉他， 怎么创建和创建谁
-        public BookService(IBookRepository bookRepository, IMapper mapper, MongoDbContext mongoDbContext)
+        public BookService(IBookRepository bookRepository, IMapper mapper, MongoDbContext mongoDbContext,
+                            ICacheService cacheService, ILogger<BookService> logger)
         {
             _bookRepository = bookRepository;
             _mapper = mapper;
             _mongoDbContext = mongoDbContext;
+            _cacheService = cacheService;
+            _logger = logger;
         }
         /// <summary>
         /// 
@@ -39,11 +46,20 @@ namespace BookManagementSystemAPI.Services
 
             if (!string.IsNullOrWhiteSpace(newBook.Name) && !string.IsNullOrWhiteSpace(newBook.Description))
             {
-               Book book = await _bookRepository.CreateBook(newBook);
 
-               //add book event here
-               BookEvent bookEvent = new BookEvent() { BookId = book.Id, EventNote = $"Book created :{book.Id}"};
-               await _mongoDbContext.BookEvents.InsertOneAsync(bookEvent);
+                Book book = await _bookRepository.CreateBook(newBook);
+
+                var expirationTime = DateTimeOffset.Now.AddMinutes(5);
+
+                var success = _cacheService.SetData<Book>($"book_{book.Id}", book, expirationTime);
+
+                _logger.LogInformation($"cached book result: {success}");
+                
+
+
+            //    //add book event here
+            //    BookEvent bookEvent = new BookEvent() { BookId = book.Id, EventNote = $"Book created :{book.Id}"};
+            //    await _mongoDbContext.BookEvents.InsertOneAsync(bookEvent);
                return book;
             }
 
@@ -57,6 +73,12 @@ namespace BookManagementSystemAPI.Services
         /// <returns></returns>
         public Book GetBookById(int id)
         {
+            var cachedBook = _cacheService.GetData<Book>($"book_{id}");
+            if (cachedBook != null)
+            {
+                return cachedBook;
+            }
+            
             Book book = _bookRepository.GetBookById(id);
             return book;
         }

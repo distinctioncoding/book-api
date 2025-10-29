@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using StackExchange.Redis;
 using System.Reflection;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -57,6 +58,15 @@ namespace BookManagementSystemAPI
 
             builder.Logging.AddDebug();
             builder.Logging.AddConsole();
+
+            builder.Services.AddScoped<ICacheService, CacheService>();
+
+            builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+            {
+                var config = sp.GetRequiredService<IConfiguration>();
+                var redisConnectionString = config["Redis:URL"];
+                return ConnectionMultiplexer.Connect(redisConnectionString);
+            });
 
             builder.Services.AddApplicationInsightsTelemetry(builder.Configuration["ApplicationInsights:ConnectionString"]);
 
